@@ -38,7 +38,6 @@ describe('streams/file-server-post', () => {
             {method: 'POST'},
             (response) => {
               const newMtime = fse.statSync(path.join(filesFolder, 'small.png')).mtime;
-
               expect(response.statusCode, 'статус код ответа 409').to.equal(409);
               expect(mtime, 'файл не должен перезаписываться').to.eql(newMtime);
               done();
