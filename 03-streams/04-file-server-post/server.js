@@ -37,34 +37,35 @@ server.on('request', (req, res) => {
     case 'POST':
       const limitedStream = new LimitSizeStream({limit: 1048576});
       const writeStream = fs.createWriteStream(filepath, {flags: 'wx'});
-      req.pipe(limitedStream).pipe(writeStream);
-      limitedStream.on('error', (error) => {
-        writeStream.destroy();
-        limitedStream.destroy();
-        fs.unlinkSync(filepath, (err) => {
-          if (err) {
-            res.statusCode = 500;
-            res.end('Server error');
-          }
-        });
-        res.statusCode = error.code === 'LIMIT_EXCEEDED' ? 413 : 500;
-        res.end('File is too large');
-      });
-      writeStream.on('error', (err) => {
-        writeStream.destroy();
-        limitedStream.destroy();
-        if (nestingLvl !== 0 && nestingLvl > 1) {
-          res.statusCode = 400;
-          res.end('Subfolders not supported');
-        } else if (err.code === 'EEXIST') {
-          isDeleteFile = false;
-          res.statusCode = 409;
-          res.end('File already exists');
-        } else {
-          res.statusCode = 500;
-          res.end();
-        }
-      });
+      req.pipe(limitedStream)
+          .on('error', (error) => {
+            writeStream.destroy();
+            limitedStream.destroy();
+            fs.unlinkSync(filepath, (err) => {
+              if (err) {
+                res.statusCode = 500;
+                res.end('Server error');
+              }
+            });
+            res.statusCode = error.code === 'LIMIT_EXCEEDED' ? 413 : 500;
+            res.end('File is too large');
+          })
+          .pipe(writeStream)
+          .on('error', (err) => {
+            writeStream.destroy();
+            limitedStream.destroy();
+            if (nestingLvl !== 0 && nestingLvl > 1) {
+              res.statusCode = 400;
+              res.end('Subfolders not supported');
+            } else if (err.code === 'EEXIST') {
+              isDeleteFile = false;
+              res.statusCode = 409;
+              res.end('File already exists');
+            } else {
+              res.statusCode = 500;
+              res.end();
+            }
+          });
       writeStream.on('finish', () => {
         isDeleteFile = false;
         res.statusCode = 201;
