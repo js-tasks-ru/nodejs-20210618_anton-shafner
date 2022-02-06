@@ -13,24 +13,18 @@ server.on('request', (req, res) => {
   const nestingLvl = 0 || (Array.isArray(pathnameArray) && pathnameArray.length);
   let isDeleteFile = true;
 
+  if (nestingLvl !== 0 && nestingLvl > 1) {
+    res.statusCode = 400;
+    res.end('Subfolders not supported');
+    return;
+  }
+
   const filepath = path.join(__dirname, 'files', pathname);
 
-  req.on('close', (err) => {
+  req.on('close', () => {
     if (isDeleteFile) {
-      fs.unlinkSync(filepath, (err) => {
-        if (err) {
-          res.statusCode = 500;
-          res.end('Server error');
-        }
-      });
-      res.statusCode = 500;
-      res.end();
+      fs.unlink(filepath, () => {});
     }
-  });
-
-  req.on('error', () => {
-    res.statusCode = 500;
-    res.end('Server error');
   });
 
   switch (req.method) {
@@ -41,7 +35,7 @@ server.on('request', (req, res) => {
           .on('error', (error) => {
             writeStream.destroy();
             limitedStream.destroy();
-            fs.unlinkSync(filepath, (err) => {
+            fs.unlink(filepath, (err) => {
               if (err) {
                 res.statusCode = 500;
                 res.end('Server error');
@@ -54,10 +48,7 @@ server.on('request', (req, res) => {
           .on('error', (err) => {
             writeStream.destroy();
             limitedStream.destroy();
-            if (nestingLvl !== 0 && nestingLvl > 1) {
-              res.statusCode = 400;
-              res.end('Subfolders not supported');
-            } else if (err.code === 'EEXIST') {
+            if (err.code === 'EEXIST') {
               isDeleteFile = false;
               res.statusCode = 409;
               res.end('File already exists');
@@ -66,7 +57,7 @@ server.on('request', (req, res) => {
               res.end();
             }
           });
-      writeStream.on('finish', () => {
+      writeStream.on('close', () => {
         isDeleteFile = false;
         res.statusCode = 201;
         res.end();
