@@ -7,7 +7,7 @@ app.use(require('koa-bodyparser')());
 
 const Router = require('koa-router');
 const router = new Router();
-const arrayResolve = [];
+let arrayResolve = [];
 
 router.get('/subscribe', async (ctx, next) => {
   try {
@@ -27,6 +27,7 @@ router.post('/publish', async (ctx, next) => {
   if (ctx.request.body.message && arrayResolve.length) {
     arrayResolve.forEach((resolve) => resolve(ctx.request.body.message));
     ctx.response.body = ctx.request.body.message;
+    arrayResolve = [];
   }
 });
 
